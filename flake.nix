@@ -3,30 +3,28 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
-    cunicu = {
-      url = "github:cunicu/cunicu";
-      #url = "github:ARizzo35/cunicu?ref=fix/nix-overlay";
-      #inputs.nixpkgs.follows = "nixpkgs";
-    };
+    cunicu.url = "github:cunicu/cunicu";
   };
 
-  outputs = { self, ... }@inputs:
-
+  outputs = { cunicu, nixpkgs, ... }:
   let
-    inherit (inputs.nixpkgs) lib;
-    #system = "aarch64-linux";
-    system = "x86_64-linux";
-    pkgs = import inputs.nixpkgs {
+    inherit (nixpkgs) lib;
+    system = "aarch64-linux";
+    pkgs = import nixpkgs {
       inherit system;
-      overlays = [ inputs.cunicu.overlays.default ];
+      overlays = [
+        cunicu.overlays.default
+        (final: prev: {
+          inherit (cunicu.packages.${system}) cunicu;
+        })
+      ];
     };
   in
   {
     nixosConfigurations.sample = lib.nixosSystem {
       inherit system;
       modules = [
-        { nixpkgs = { inherit system pkgs; }; }
-        inputs.cunicu.nixosModules.default
+        cunicu.nixosModules.default
         {
           boot.loader.systemd-boot.enable = true;
           fileSystems."/".device = "/dev/disk/by-label/nixos";
@@ -38,5 +36,4 @@
       ];
     };
   };
-
 }
